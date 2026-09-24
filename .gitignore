@@ -1,0 +1,46 @@
+# Node.js dependencies & builds
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Python cache & build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environment variables & editor configs
+.env
+.env.*
+.vscode/
+.idea/
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Raw Datasets, PDFs & Training Notebooks/Archives (not required for runtime production)
+DataSet/
+Loan_default.csv.zip
+Task4.zip
+Salary_Data.csv
+*.ipynb
+*.pdf
+*.zip
+
+# Standalone offline scripts & legacy root files
+loan_default_model.pkl
+feature_columns.pkl
+scratch_logistic_regression.py
+streamlit_app.py
+train_pipeline.py
+test_api.py
+verify_fastapi_e2e.py
+run_all.py
+
+# Explicitly ensure production models and artifacts are tracked for deployment
+!models/best_pipeline.pkl
+!models/preprocessor.pkl
+!models/model_metadata.json
+!artifacts/
