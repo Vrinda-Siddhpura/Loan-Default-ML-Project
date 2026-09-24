@@ -2,6 +2,9 @@
   "name": "credscense-ai-monorepo",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
     "build": "cd frontend && npm install && npm run build"
   }
