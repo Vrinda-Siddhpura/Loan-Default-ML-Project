@@ -202,3 +202,4 @@ ML/
 
 4. **What are the top drivers of loan default?**
    - *Answer:* Permutation importance reveals that **Debt-to-Income (DTI) Ratio**, **Interest Rate**, **Income**, and **Credit Score** have the highest predictive weight. Higher interest rates and elevated DTI strongly increase default risk, while a co-signer significantly lowers default risk.
+"# Veyra-AI" 
