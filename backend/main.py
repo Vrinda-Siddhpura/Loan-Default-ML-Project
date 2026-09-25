@@ -38,12 +38,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def _find_frontend_dist() -> Path:
+    candidates = [
+        Path(__file__).resolve().parent.parent / "frontend" / "dist",
+        Path.cwd() / "frontend" / "dist",
+        Path("/var/task/frontend/dist"),
+    ]
+    for c in candidates:
+        if (c / "index.html").exists():
+            return c
+    return candidates[0]
+
 # Normalize Vercel serverless request path if rewritten
 @app.middleware("http")
 async def path_normalization_middleware(request: Request, call_next):
-    matched = request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path")
-    if matched and request.scope["path"] in ("/api/index.py", "/", "/index.py"):
-        request.scope["path"] = matched
+    path_param = request.query_params.get("__path__")
+    if path_param:
+        request.scope["path"] = path_param if path_param.startswith("/") else f"/{path_param}"
+    else:
+        matched = request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path")
+        if matched and request.scope["path"] in ("/api/index.py", "/", "/index.py"):
+            request.scope["path"] = matched
     return await call_next(request)
 
 # Health endpoint (accessible both at /api/health and /health)
@@ -86,14 +101,39 @@ async def get_diagnostic_plot(filename: str):
             return FileResponse(str(p))
     raise HTTPException(status_code=404, detail="Plot not found")
 
-# Fallback handler for unmatched paths with diagnostics
+# Serve frontend static assets (Vite JS/CSS bundles)
+@app.get("/assets/{filename:path}", include_in_schema=False)
+async def serve_frontend_assets(filename: str):
+    dist_dir = _find_frontend_dist()
+    asset_file = dist_dir / "assets" / filename
+    if asset_file.exists() and asset_file.is_file():
+        media_type = "text/css" if filename.endswith(".css") else ("application/javascript" if filename.endswith(".js") else None)
+        return FileResponse(str(asset_file), media_type=media_type)
+    raise HTTPException(status_code=404, detail="Asset not found")
+
+# Serve frontend index for root and client-side routing
+@app.get("/", include_in_schema=False)
+@app.get("/index.html", include_in_schema=False)
+async def serve_frontend_index():
+    dist_dir = _find_frontend_dist()
+    index_file = dist_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    return {"status": "ok", "message": "Credscense AI backend active"}
+
+# Fallback handler for client-side SPA routing and diagnostic fallback
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"], include_in_schema=False)
 async def unmatched_path_fallback(request: Request, full_path: str):
+    if request.method == "GET" and not full_path.startswith("api"):
+        dist_dir = _find_frontend_dist()
+        index_file = dist_dir / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
     return {
         "status": "unmatched_route",
         "requested_path": request.url.path,
         "scope_path": request.scope.get("path"),
-        "matched_header": request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path"),
+        "full_path": full_path,
         "available_endpoints": [
             "/api/health", "/api/model-details", "/api/metrics",
             "/api/insights", "/api/predict", "/api/plots/{filename}"
