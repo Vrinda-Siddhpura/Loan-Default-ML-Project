@@ -6,7 +6,7 @@
     "api/index.py": {
       "memory": 1024,
       "maxDuration": 60,
-      "includeFiles": "backend/**,models/**,artifacts/**,frontend/dist/**"
+      "includeFiles": "backend/**,models/**,artifacts/**"
     }
   },
   "rewrites": [
@@ -15,7 +15,11 @@
       "destination": "/api/index.py?__path__=/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/assets/(.*)",
+      "destination": "/assets/$1"
+    },
+    {
+      "source": "/((?!api/|assets/|.*\\.(?:css|js|png|jpg|jpeg|gif|svg|ico|json|woff|woff2)$).*$)",
       "destination": "/index.html"
     }
   ]
