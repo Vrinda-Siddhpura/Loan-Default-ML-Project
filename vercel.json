@@ -19,7 +19,7 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/docs(.*)",
+      "src": "/docs",
       "dest": "api/index.py"
     },
     {
@@ -27,19 +27,11 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/assets/(.*)",
-      "dest": "/frontend/dist/assets/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/frontend/dist/favicon.ico"
-    },
-    {
       "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "dest": "/frontend/dist/index.html"
+      "dest": "frontend/dist/index.html"
     }
   ]
 }
