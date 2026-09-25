@@ -68,6 +68,25 @@ class ModelService:
         pipeline_path = self._get_models_dir() / "best_pipeline.pkl"
         if pipeline_path.exists():
             try:
+                # Compatibility shims for unpickling across scikit-learn and numpy versions
+                try:
+                    import sklearn.compose._column_transformer as ct
+                    if not hasattr(ct, "_RemainderColsList"):
+                        class _RemainderColsList(list):
+                            pass
+                        ct._RemainderColsList = _RemainderColsList
+                except Exception:
+                    pass
+
+                try:
+                    import numpy as np
+                    if not hasattr(np, "_core") and hasattr(np, "core"):
+                        import sys
+                        sys.modules["numpy._core"] = np.core
+                        sys.modules["numpy._core.multiarray"] = np.core.multiarray
+                except Exception:
+                    pass
+
                 self.pipeline = joblib.load(pipeline_path)
                 logger.info(f"Loaded ML pipeline from {pipeline_path}")
                 return self.pipeline

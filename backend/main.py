@@ -134,6 +134,8 @@ async def unmatched_path_fallback(request: Request, full_path: str):
         "requested_path": request.url.path,
         "scope_path": request.scope.get("path"),
         "full_path": full_path,
+        "query_params": dict(request.query_params),
+        "headers": dict(request.headers),
         "available_endpoints": [
             "/api/health", "/api/model-details", "/api/metrics",
             "/api/insights", "/api/predict", "/api/plots/{filename}"
