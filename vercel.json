@@ -3,14 +3,7 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "includeFiles": [
-          "backend/**",
-          "models/**",
-          "artifacts/**"
-        ]
-      }
+      "use": "@vercel/python"
     },
     {
       "src": "frontend/package.json",
@@ -26,7 +19,11 @@
       "dest": "api/index.py"
     },
     {
-      "src": "/(docs|redoc|openapi.json)(.*)",
+      "src": "/docs(.*)",
+      "dest": "api/index.py"
+    },
+    {
+      "src": "/openapi.json",
       "dest": "api/index.py"
     },
     {
