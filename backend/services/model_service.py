@@ -116,7 +116,31 @@ class ModelService:
                 except Exception:
                     pass
 
+                try:
+                    from sklearn.impute import SimpleImputer
+                    if not hasattr(SimpleImputer, "_fill_dtype"):
+                        def _get_fill_dtype(self):
+                            return getattr(self, "_fit_dtype", getattr(self, "statistics_", np.array([])).dtype)
+                        SimpleImputer._fill_dtype = property(_get_fill_dtype)
+                except Exception:
+                    pass
+
                 self.pipeline = joblib.load(pipeline_path)
+
+                # Ensure all nested SimpleImputer instances have _fill_dtype populated
+                try:
+                    for name, step in getattr(self.pipeline, "named_steps", {}).items():
+                        if hasattr(step, "transformers_"):
+                            for tr_name, tr, cols in step.transformers_:
+                                if hasattr(tr, "named_steps"):
+                                    for s_name, s in tr.named_steps.items():
+                                        if hasattr(s, "_fit_dtype") and not hasattr(s, "_fill_dtype"):
+                                            s._fill_dtype = s._fit_dtype
+                                elif hasattr(tr, "_fit_dtype") and not hasattr(tr, "_fill_dtype"):
+                                    tr._fill_dtype = tr._fit_dtype
+                except Exception:
+                    pass
+
                 logger.info(f"Loaded ML pipeline from {pipeline_path}")
                 return self.pipeline
             except Exception as e:
