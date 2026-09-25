@@ -3,7 +3,13 @@ from backend.services.model_service import ModelService
 
 class PredictionService:
     def __init__(self):
-        self.model_service = ModelService.get_instance()
+        self._model_service = None
+
+    @property
+    def model_service(self):
+        if self._model_service is None:
+            self._model_service = ModelService.get_instance()
+        return self._model_service
 
     def predict(self, data_dict: dict) -> dict:
         pipeline = self.model_service.get_pipeline()

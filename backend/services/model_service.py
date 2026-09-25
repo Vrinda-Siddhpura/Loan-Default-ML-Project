@@ -1,17 +1,11 @@
 import os
 import json
+import logging
 import joblib
 import pandas as pd
 from pathlib import Path
 
-# Path to backend/services -> parent is backend -> parent is project root
-BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR.parent.parent
-
-MODELS_DIR = PROJECT_ROOT / "models"
-ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
-PLOTS_DIR = ARTIFACTS_DIR / "plots"
-METRICS_DIR = ARTIFACTS_DIR / "metrics"
+logger = logging.getLogger(__name__)
 
 class ModelService:
     _instance = None
@@ -19,8 +13,8 @@ class ModelService:
     def __init__(self):
         self.pipeline = None
         self.metadata = None
-        self._load_pipeline()
-        self._load_metadata()
+        self._pipeline_load_attempted = False
+        self._metadata_load_attempted = False
 
     @classmethod
     def get_instance(cls):
@@ -28,37 +22,93 @@ class ModelService:
             cls._instance = ModelService()
         return cls._instance
 
+    @classmethod
+    def _get_project_root(cls) -> Path:
+        """Find the project root across local development and Vercel serverless environments."""
+        candidates = [
+            Path(__file__).resolve().parent.parent.parent,
+            Path.cwd(),
+            Path("/var/task"),
+        ]
+        for c in candidates:
+            if (c / "models").exists() and (c / "models" / "best_pipeline.pkl").exists():
+                return c
+        return candidates[0]
+
+    @classmethod
+    def _get_models_dir(cls) -> Path:
+        """Locate the models directory reliably."""
+        candidates = [
+            cls._get_project_root() / "models",
+            Path.cwd() / "models",
+            Path("/var/task/models"),
+            Path(__file__).resolve().parent.parent.parent / "models",
+        ]
+        for c in candidates:
+            if c.exists() and c.is_dir():
+                return c
+        return candidates[0]
+
+    @classmethod
+    def _get_artifacts_dir(cls) -> Path:
+        """Locate the artifacts directory reliably."""
+        candidates = [
+            cls._get_project_root() / "artifacts",
+            Path.cwd() / "artifacts",
+            Path("/var/task/artifacts"),
+            Path(__file__).resolve().parent.parent.parent / "artifacts",
+        ]
+        for c in candidates:
+            if c.exists() and c.is_dir():
+                return c
+        return candidates[0]
+
     def _load_pipeline(self):
-        pipeline_path = MODELS_DIR / "best_pipeline.pkl"
+        self._pipeline_load_attempted = True
+        pipeline_path = self._get_models_dir() / "best_pipeline.pkl"
         if pipeline_path.exists():
-            self.pipeline = joblib.load(pipeline_path)
-            return self.pipeline
+            try:
+                self.pipeline = joblib.load(pipeline_path)
+                logger.info(f"Loaded ML pipeline from {pipeline_path}")
+                return self.pipeline
+            except Exception as e:
+                logger.error(f"Failed to deserialize ML pipeline from {pipeline_path}: {e}")
+                self.pipeline = None
+                raise
+        else:
+            logger.warning(f"ML Pipeline not found at {pipeline_path}")
         return None
 
     def _load_metadata(self):
-        meta_path = MODELS_DIR / "model_metadata.json"
+        self._metadata_load_attempted = True
+        meta_path = self._get_models_dir() / "model_metadata.json"
         if meta_path.exists():
-            with open(meta_path, "r") as f:
-                self.metadata = json.load(f)
-            return self.metadata
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    self.metadata = json.load(f)
+                return self.metadata
+            except Exception as e:
+                logger.error(f"Failed to read model metadata from {meta_path}: {e}")
+                self.metadata = {}
         return None
 
     def get_pipeline(self):
-        if self.pipeline is None:
+        if self.pipeline is None and not self._pipeline_load_attempted:
             self._load_pipeline()
         return self.pipeline
 
     def get_metadata(self):
-        if self.metadata is None:
+        if self.metadata is None and not self._metadata_load_attempted:
             self._load_metadata()
         return self.metadata or {}
 
     def get_metrics(self):
         result = {}
-        comp_file = METRICS_DIR / "model_comparison.csv"
-        cv_file = METRICS_DIR / "cross_validation.csv"
-        feat_file = METRICS_DIR / "feature_importance.csv"
-        th_file = METRICS_DIR / "threshold_analysis.csv"
+        metrics_dir = self._get_artifacts_dir() / "metrics"
+        comp_file = metrics_dir / "model_comparison.csv"
+        cv_file = metrics_dir / "cross_validation.csv"
+        feat_file = metrics_dir / "feature_importance.csv"
+        th_file = metrics_dir / "threshold_analysis.csv"
 
         if comp_file.exists():
             result["model_comparison"] = pd.read_csv(comp_file).to_dict(orient="records")
