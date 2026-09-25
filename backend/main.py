@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 
@@ -38,23 +38,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Health endpoint
+# Normalize Vercel serverless request path if rewritten
+@app.middleware("http")
+async def path_normalization_middleware(request: Request, call_next):
+    matched = request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path")
+    if matched and request.scope["path"] in ("/api/index.py", "/", "/index.py"):
+        request.scope["path"] = matched
+    return await call_next(request)
+
+# Health endpoint (accessible both at /api/health and /health)
+@app.get("/health")
 @app.get("/api/health")
 async def health_check():
     return {"status": "ok"}
 
-# Documentation route alias
+# Documentation route aliases
 @app.get("/api/docs", include_in_schema=False)
 async def api_docs_redirect():
     return RedirectResponse(url="/docs")
 
-# Mount feature routers
+# Mount feature routers with both /api prefix and root prefix for resilient Vercel rewrites
 app.include_router(prediction.router, prefix="/api")
-app.include_router(model.router, prefix="/api")
-app.include_router(metrics.router, prefix="/api")
-app.include_router(insights.router, prefix="/api")
+app.include_router(prediction.router)
 
-# Serve diagnostic plots without triggering Vercel StaticFiles collection warnings
+app.include_router(model.router, prefix="/api")
+app.include_router(model.router)
+
+app.include_router(metrics.router, prefix="/api")
+app.include_router(metrics.router)
+
+app.include_router(insights.router, prefix="/api")
+app.include_router(insights.router)
+
+# Serve diagnostic plots
+@app.get("/plots/{filename}")
 @app.get("/api/plots/{filename}")
 async def get_diagnostic_plot(filename: str):
     safe_filename = Path(filename).name
@@ -68,6 +85,20 @@ async def get_diagnostic_plot(filename: str):
         if p.exists() and p.is_file():
             return FileResponse(str(p))
     raise HTTPException(status_code=404, detail="Plot not found")
+
+# Fallback handler for unmatched paths with diagnostics
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"], include_in_schema=False)
+async def unmatched_path_fallback(request: Request, full_path: str):
+    return {
+        "status": "unmatched_route",
+        "requested_path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "matched_header": request.headers.get("x-matched-path") or request.headers.get("x-vercel-matched-path"),
+        "available_endpoints": [
+            "/api/health", "/api/model-details", "/api/metrics",
+            "/api/insights", "/api/predict", "/api/plots/{filename}"
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
