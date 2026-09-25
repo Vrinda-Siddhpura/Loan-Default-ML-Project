@@ -79,6 +79,25 @@ class ModelService:
                     pass
 
                 try:
+                    import sklearn._loss
+                    import sys
+                    sys.modules["_loss"] = sklearn._loss
+                    sys.modules["sklearn.ensemble._hist_gradient_boosting._loss"] = sklearn._loss
+                except Exception:
+                    pass
+
+                try:
+                    import sklearn.ensemble._hist_gradient_boosting as hgb
+                    import sys
+                    for mod_name in ["_binning", "_bitset", "_gradient_boosting", "_predictor", "common", "splitting", "histogram"]:
+                        if hasattr(hgb, mod_name):
+                            submod = getattr(hgb, mod_name)
+                            sys.modules[mod_name] = submod
+                            sys.modules[f"sklearn.ensemble._hist_gradient_boosting.{mod_name}"] = submod
+                except Exception:
+                    pass
+
+                try:
                     import numpy as np
                     if not hasattr(np, "_core") and hasattr(np, "core"):
                         import sys
