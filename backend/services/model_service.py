@@ -79,12 +79,22 @@ class ModelService:
                     pass
 
                 try:
-                    import sklearn._loss
                     import sys
-                    sys.modules["_loss"] = sklearn._loss
-                    sys.modules["sklearn.ensemble._hist_gradient_boosting._loss"] = sklearn._loss
+                    import sklearn._loss as sl
+                    import sklearn._loss._loss as cl
+                    for attr in dir(cl):
+                        if not attr.startswith("__"):
+                            setattr(sl, attr, getattr(cl, attr))
+                    sys.modules["_loss"] = cl
+                    sys.modules["sklearn.ensemble._hist_gradient_boosting._loss"] = cl
                 except Exception:
-                    pass
+                    try:
+                        import sklearn._loss
+                        import sys
+                        sys.modules["_loss"] = sklearn._loss
+                        sys.modules["sklearn.ensemble._hist_gradient_boosting._loss"] = sklearn._loss
+                    except Exception:
+                        pass
 
                 try:
                     import sklearn.ensemble._hist_gradient_boosting as hgb
