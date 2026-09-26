@@ -1,5 +1,9 @@
 # LoanShield AI: Enterprise Loan Default Prediction System
 
+🚀 **[Live Demo](https://loan-default-ml-project-sigma.vercel.app/)**
+
+An enterprise-grade Machine Learning web application for loan default prediction.
+
 [![Darshan University ML SOP](https://img.shields.io/badge/Darshan%20University-ML%20SOP%20Compliant-blue.svg)](file:///d:/Projects/ML/ML_SOP_Project.pdf)
 [![Python](https://img.shields.io/badge/Python-3.13-3776AB.svg?logo=python&logoColor=white)](https://python.org)
 [![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-1.0+-F7931E.svg?logo=scikitlearn&logoColor=white)](https://scikit-learn.org)
